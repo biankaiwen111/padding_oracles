@@ -1,14 +1,15 @@
 import socket
+import time
 
 target_plaintext = '{"username": "guest", "expires": "2023-01-07", "is_admin": "true"}'
 
 ini_2 = "0d" * 16
 
-host = "127.0.0.1"
+host = "192.168.2.83"
 
-port = 23556
+port = 26151
 
-invalid = b'invalid padding\n'
+invalid = 'invalid padding\n'
 
 ini_1 = "00010203040506070809101112131415"
 
@@ -21,8 +22,8 @@ def attack_blocks(block1, block2):
     Is = []
 
     for j in range(16):
+        time.sleep(5)
         padding_str = ""
-        print(Is)
         for n in range(len(Is)):
             I = Is[n]
             temp = I ^ (pos - 1) ^ pos
@@ -38,6 +39,8 @@ def attack_blocks(block1, block2):
                 b = "0" + b
     
             c1_ = ini_1[ : index] + b + padding_str
+            print("current cipher: ", c1_)
+
             secret_text = c1_ + ini_2 + " "
 
             s = socket.socket()
@@ -45,14 +48,21 @@ def attack_blocks(block1, block2):
             s.sendall(secret_text.encode())
             s.shutdown(socket.SHUT_WR)
 
-            result = s.recv(2024, socket.MSG_WAITALL)
+            fragments = []
+            while True:
+                chunk = s.recv(100)
+                if not chunk:
+                    break
+                fragments.append(chunk.decode('utf-8'))
+            result = "".join(fragments)
+            
+            s.close()
 
             if result[-16:] != invalid:
                 I = int(b, 16)
                 Is = [I] + Is
                 pos += 1
                 index -= 2
-                print(secret_text)
                 res = secret_text
                 break
     return res[:-1]
@@ -86,44 +96,37 @@ target_plaintext_block3 = hex_target_plaintext[64:96]
 target_plaintext_block4 = hex_target_plaintext[96:128]
 target_plaintext_block5 = hex_target_plaintext[128:]
 
-final_cipher = ""
-
-print(len(padded_target_plain_text))
-print(hex_target_plaintext)
-
-test = "219ac3489ed4eaf221a59669d449937f0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d"
 raw_cipher_text_block_1_2 = attack_blocks(ini_1, ini_2)
-print(target_plaintext_block5, len(target_plaintext_block5))
 cipher_text_block_1_2 = construct_cipher(target_plaintext_block5, raw_cipher_text_block_1_2)
-print(cipher_text_block_1_2, len(cipher_text_block_1_2))
-final_cipher
+print("cipher text of block 6: ", cipher_text_block_1_2[32:])
+time.sleep(5)
 
 ini_1 = "00010203040506070809101112131415"
 ini_2 = cipher_text_block_1_2[:32]
 raw_cipher_text_block_2_3 = attack_blocks(ini_1, ini_2)
-test2 = "d5ccb68dd47f15db56c94cd5689adc2370cb9219cf85bba370f4c7388518c26e"
 cipher_text_block_2_3 = construct_cipher(target_plaintext_block4, raw_cipher_text_block_2_3)
-print(cipher_text_block_2_3, len(cipher_text_block_2_3))
+print("cipher text of block 5: ", cipher_text_block_2_3[32:])
+time.sleep(5)
 
 ini_1 = "00010203040506070809101112131415"
 ini_2 = cipher_text_block_2_3[:32]
 raw_cipher_text_block_3_4 = attack_blocks(ini_1, ini_2)
-test2 = "d5ccb68dd47f15db56c94cd5689adc2370cb9219cf85bba370f4c7388518c26e"
 cipher_text_block_3_4 = construct_cipher(target_plaintext_block3, raw_cipher_text_block_3_4)
-print(cipher_text_block_3_4, len(cipher_text_block_3_4))
+print("cipher text of block 4: ", cipher_text_block_3_4[32:])
+time.sleep(5)
 
 ini_1 = "00010203040506070809101112131415"
 ini_2 = cipher_text_block_3_4[:32]
 raw_cipher_text_block_4_5 = attack_blocks(ini_1, ini_2)
-test2 = "d5ccb68dd47f15db56c94cd5689adc2370cb9219cf85bba370f4c7388518c26e"
 cipher_text_block_4_5 = construct_cipher(target_plaintext_block2, raw_cipher_text_block_4_5)
-print(cipher_text_block_4_5, len(cipher_text_block_4_5))
+print("cipher text of block 3: ", cipher_text_block_4_5[32:])
+time.sleep(5)
 
 ini_1 = "00010203040506070809101112131415"
 ini_2 = cipher_text_block_4_5[:32]
 raw_cipher_text_block_5_6 = attack_blocks(ini_1, ini_2)
-test2 = "d5ccb68dd47f15db56c94cd5689adc2370cb9219cf85bba370f4c7388518c26e"
 cipher_text_block_5_6 = construct_cipher(target_plaintext_block1, raw_cipher_text_block_5_6)
-print(cipher_text_block_5_6, len(cipher_text_block_5_6))
+print("cipher text of block 1 and 2: ", cipher_text_block_5_6)
 
-print(cipher_text_block_5_6 + cipher_text_block_4_5[32:] + cipher_text_block_3_4[32:] + cipher_text_block_2_3[32:] + cipher_text_block_1_2[32:])
+
+print("your final cipher text is ", cipher_text_block_5_6 + cipher_text_block_4_5[32:] + cipher_text_block_3_4[32:] + cipher_text_block_2_3[32:] + cipher_text_block_1_2[32:])
